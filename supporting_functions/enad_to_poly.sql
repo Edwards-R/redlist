@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION redlist.enad_to_poly(
     northing INT,
     accuracy INT,
     datum INT
-) RETURNS geometry
+) RETURNS public.geometry
 LANGUAGE plpgsql
 AS $$
 

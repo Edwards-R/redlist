@@ -75,7 +75,7 @@ BEGIN
             CASE WHEN r.all IS NULL THEN 0 ELSE r.all END all,
             CASE WHEN r.england IS NULL THEN 0 ELSE r.england END england,
             CASE WHEN r.scotland IS NULL THEN 0 ELSE r.scotland END scotland,
-            CASE WHEN r.wales IS NULL THEN 0 ELSE r.wales END wales,
+            CASE WHEN r.wales IS NULL THEN 0 ELSE r.wales END wales
             FROM raw_date r
         )',
         view_name, source_name

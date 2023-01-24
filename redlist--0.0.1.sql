@@ -1,4 +1,35 @@
+/*
+ * This script cleans up the previous run of the Redlist so that a new one may commence.
+ * It does this rather burtally by just DROPPING everything
+ *
+ * If you want to keep anything, back it up before running this!
+ */
 
+-- Drop any extant redlist schema
+DROP SCHEMA IF EXISTS redlist CASCADE;
+
+-- Create the redlist schema
+CREATE SCHEMA redlist;CREATE OR REPLACE FUNCTION redlist.enad_to_poly(
+    easting INT,
+    northing INT,
+    accuracy INT,
+    datum INT
+) RETURNS public.geometry
+LANGUAGE plpgsql
+AS $$
+
+DECLARE
+
+BEGIN
+    RETURN public.st_makeenvelope(
+        easting,
+        northing,
+        easting + accuracy,
+        northing + accuracy,
+        datum
+    );
+END;
+$$;
 /*
  * Finds the number of cells, determined by the input data source's resolution, for all the area, then for England, Scotland, and Wales.
  * Then pivots the results into a single line, ready for consumption by the UI
@@ -75,24 +106,13 @@ BEGIN
             CASE WHEN r.all IS NULL THEN 0 ELSE r.all END all,
             CASE WHEN r.england IS NULL THEN 0 ELSE r.england END england,
             CASE WHEN r.scotland IS NULL THEN 0 ELSE r.scotland END scotland,
-            CASE WHEN r.wales IS NULL THEN 0 ELSE r.wales END wales,
+            CASE WHEN r.wales IS NULL THEN 0 ELSE r.wales END wales
             FROM raw_date r
         )',
         view_name, source_name
     );
 END
 $$;/*
- * This script cleans up the previous run of the Redlist so that a new one may commence.
- * It does this rather burtally by just DROPPING everything
- *
- * If you want to keep anything, back it up before running this!
- */
-
--- Drop any extant redlist schema
-DROP SCHEMA IF EXISTS redlist CASCADE;
-
--- Create the redlist schema
-CREATE SCHEMA redlist;/*
 * This script is responsible for transferring data into the redlist 'source' table
 *
 * It is recommended to use the follow fields as a minimum:
@@ -122,6 +142,8 @@ CREATE SCHEMA redlist;/*
  * Also take the opportunity to restrict the extracted data to only that relevant to the redlist and add the date as year
  */
 
+SET SCHEMA 'redist';
+
 CREATE TABLE redlist.simple_unique_record AS (
     SELECT pk, tik, binomial,
     gridref, easting, northing, accuracy, datum, vc_num,
@@ -144,8 +166,8 @@ SET SCHEMA 'redlist';
 -- Create the 10km resolution version
 CREATE VIEW sur_10 AS (
     SELECT tik,
-    floor((easting/10000)*10000) easting,
-    floor((northing/10000)*10000) northing,
+    (floor((easting/10000)*10000))::INT easting,
+    (floor((northing/10000)*10000))::INT northing,
     10000 accuracy,
     datum,
     vc_num,
@@ -157,8 +179,8 @@ CREATE VIEW sur_10 AS (
 -- Create the 2km resolution version
 CREATE VIEW sur_2 AS (
     SELECT tik,
-    floor((easting/2000)*2000) easting,
-    floor((northing/2000)*2000) northing,
+    (floor((easting/2000)*2000))::INT easting,
+    (floor((northing/2000)*2000))::INT northing,
     2000 accuracy,
     datum,
     vc_num,
@@ -166,6 +188,35 @@ CREATE VIEW sur_2 AS (
     lower_year, upper_year
     FROM simple_unique_record
     WHERE accuracy <= 2000
+);
+
+
+-- Simple Unique Annual Record
+
+-- This is the base view to use for mapping and calculating spatial data from as it creates the most optimised cell count possible
+
+CREATE VIEW sura_10 AS (
+    SELECT tik,
+    easting,
+    northing,
+    accuracy,
+    datum,
+    vc_num,
+    lower_year, upper_year
+    FROM sur_10
+    GROUP BY tik, easting, northing, accuracy, datum, vc_num, lower_year, upper_year
+);
+
+CREATE VIEW sura_2 AS (
+    SELECT tik,
+    easting,
+    northing,
+    accuracy,
+    datum,
+    vc_num,
+    lower_year, upper_year
+    FROM sur_2
+    GROUP BY tik, easting, northing, accuracy, datum, vc_num, lower_year, upper_year
 );SET SCHEMA 'redlist';
 
 -- Make the 10km counts
