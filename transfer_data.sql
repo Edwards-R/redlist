@@ -38,6 +38,6 @@ CREATE TABLE redlist.simple_unique_record AS (
     date_part('year', upper_date) upper_year
     FROM public.simple_unique_record
     WHERE datum = 27700
-    AND date_part('year', lower_date) > 1995
+    AND date_part('year', lower_date) > 1991
     AND date_part('year', upper_date) <= 2021
 );

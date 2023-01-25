@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION redlist.buffer_union(
     source_name TEXT, -- The table to use as a data source
     distance    INT, -- Distance of the buffer
     start_year  INT DEFAULT 0, -- Lowest year, inclusive
-    end_year    INT DEFAULT 3000, --Higheste year, inclusive
+    end_year    INT DEFAULT 3000, --Highest year, inclusive
     datum       INT DEFAULT 27700 -- The datum to unify all geometry to
 )
 RETURNS TABLE (
