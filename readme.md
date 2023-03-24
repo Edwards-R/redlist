@@ -81,11 +81,13 @@ If the level of self-replication is greater than or equal to 20%, the automatic 
 
 If the imported dataset has reached this point, it is imported into the live database. Any records which have failed due to temporal or spatial checks are retained in the `failure` table, which can be examined by an expert for records which 'true' outliers, which records need further verification, and which records can be ignored. This is done by noting down the unique IDs of the records to pass, which can then be 'recycled' from `failure` into `clone_check` (making sure that the record passes on **both** spatial *and* temporal). From here, records can be directly entered without calling the spatial or temporal checks since these have been manually performed.
 
-### Cloning BWARS
+### **Cloning BWARS**
 
 There are a number of data sources which were provided for use in the Redlist project which were not to be incorporated into the BWARS database. The simplest method of handling these records is to complete all imports to the BWARS database, then clone the full database into a separate repository. This repository is automatically secured by Postgres and carries over the import routines. Non-BWARS data can then be imported using the Checker and Postgres routines outlined above.
 
-### Simple Unique Record
+## **Output Preparation**
+
+### **Simple Unique Record**
 
 The final step is to create a view into the main database which:
 
@@ -97,4 +99,10 @@ The final step is to create a view into the main database which:
     * Exact ENAD (i.e. spatial position)
     * Lower & upper date
 
-This is the export which is typically used to provide exports. A materialised version can be created in order to speed up rate of access, which is known as `sur_mat` - Simple Unique Record Materialised. Another materialised view created is `sur_mat_10`, which replicates `sur_mat` except that records are converted to a spatial resolution of 10 km and postGIS polygons are created from the 10 km resolution data. This is done to enable visual examination of the placement of specific records within QGIS, which is able to directly read data from this table.
+This is the export which is typically used to provide exports. A materialised version can be created in order to speed up rate of access, which is known as `sur_mat` - Simple Unique Record Materialised.
+
+### **Simple Unique Record at 10 km resolution**
+
+Another materialised view created is `sur_mat_10`, which replicates `sur_mat` except that records are converted to a spatial resolution of 10 km and postGIS polygons are created from the 10 km resolution data. This is done to enable visual examination of the placement of specific records within QGIS, which is able to directly read data from this table.
+
+### **Count Cell**

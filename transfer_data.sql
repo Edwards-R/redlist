@@ -30,7 +30,7 @@
 
 SET SCHEMA 'redist';
 
-CREATE TABLE redlist.simple_unique_record AS (
+CREATE MATERIALIZED VIEW redlist.simple_unique_record AS (
     SELECT pk, tik, binomial,
     gridref, easting, northing, accuracy, datum, vc_num,
     lower_date, upper_date,
