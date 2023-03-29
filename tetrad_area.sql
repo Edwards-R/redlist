@@ -31,7 +31,11 @@ z AS (
 )
 
 -- Multiply by 4 to get sq km (2km x 2km = 4 km sq)
-SELECT a.tik, b.binomial, a.count*4 all, x.count*4 slice_1, y.count*4 slice_2, z.count*4 slice_3
+SELECT a.tik, b.binomial,
+    COALESCE(a.count*4, 0) all,
+    COALESCE(x.count*4, 0) slice_1,
+    COALESCE(y.count*4, 0) slice_2,
+    COALESCE(z.count*4, 0) slice_3
 FROM nomenclature b
 LEFT OUTER JOIN a on b.tik = a.tik
 LEFT OUTER JOIN x on b.tik = x.tik

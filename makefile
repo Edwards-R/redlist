@@ -8,5 +8,6 @@ transfer_data.sql \
 prepare_data.sql \
 nomenclature.sql \
 cell_counts.sql \
-make_buffer_union.sql
+make_buffer_union.sql \
+tetrad_area.sql
 	cat $^ > $@
