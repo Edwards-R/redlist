@@ -6,7 +6,7 @@
  * New areas can be added easily by adding them to the CTE and then following the established process
  */
 
-CREATE OR REPLACE PROCEDURE redlist.cells(
+CREATE OR REPLACE PROCEDURE redlist.regional_cells(
     view_name TEXT,
     source_name TEXT
 )

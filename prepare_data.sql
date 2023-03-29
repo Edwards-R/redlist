@@ -8,7 +8,7 @@ SET SCHEMA 'redlist';
  */
 
 -- Create the 10km resolution version
-CREATE VIEW sur_10 AS (
+CREATE VIEW sur_10km AS (
     SELECT tik,
     (floor((easting/10000)*10000))::INT easting,
     (floor((northing/10000)*10000))::INT northing,
@@ -21,7 +21,7 @@ CREATE VIEW sur_10 AS (
 );
 
 -- Create the 2km resolution version
-CREATE VIEW sur_2 AS (
+CREATE VIEW sur_2km AS (
     SELECT tik,
     (floor((easting/2000)*2000))::INT easting,
     (floor((northing/2000)*2000))::INT northing,
@@ -35,11 +35,11 @@ CREATE VIEW sur_2 AS (
 );
 
 
--- Simple Unique Annual Record
+-- Simple Unique Record Annual
 
 -- This is the base view to use for mapping and calculating spatial data from as it creates the most optimised cell count possible
 
-CREATE VIEW sura_10 AS (
+CREATE VIEW sura_10km AS (
     SELECT tik,
     easting,
     northing,
@@ -47,11 +47,11 @@ CREATE VIEW sura_10 AS (
     datum,
     vc_num,
     lower_year, upper_year
-    FROM sur_10
+    FROM sur_10km
     GROUP BY tik, easting, northing, accuracy, datum, vc_num, lower_year, upper_year
 );
 
-CREATE VIEW sura_2 AS (
+CREATE VIEW sura_2km AS (
     SELECT tik,
     easting,
     northing,
@@ -59,6 +59,6 @@ CREATE VIEW sura_2 AS (
     datum,
     vc_num,
     lower_year, upper_year
-    FROM sur_2
+    FROM sur_2km
     GROUP BY tik, easting, northing, accuracy, datum, vc_num, lower_year, upper_year
 );
