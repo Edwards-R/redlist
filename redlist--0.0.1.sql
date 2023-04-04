@@ -490,7 +490,7 @@ FROM nomenclature b
 LEFT OUTER JOIN a on b.tik = a.tik
 LEFT OUTER JOIN x on b.tik = x.tik
 LEFT OUTER JOIN y on b.tik = y.tik
-LEFT OUTER JOIN z on b.tik = z.tik
+LEFT OUTER JOIN z on b.tik = z.tik;
 DROP SEQUENCE IF EXISTS tetseq;
 
 CREATE TEMPORARY SEQUENCE tetseq START 1;
@@ -562,7 +562,8 @@ SELECT pk, tik, run, poly FROM poly_two
 
 UNION
 
-SELECT pk, tik, run, poly FROM poly_threeSET SCHEMA 'redlist';
+SELECT pk, tik, run, poly FROM poly_three;
+SET SCHEMA 'redlist';
 CREATE VIEW record_counts AS
 WITH a AS (
     SELECT tik, COUNT(*)
@@ -624,4 +625,4 @@ LEFT OUTER JOIN x on b.tik = x.tik
 LEFT OUTER JOIN y on b.tik = y.tik
 LEFT OUTER JOIN z on b.tik = z.tik
 LEFT OUTER JOIN h on b.tik = h.tik
-LEFT OUTER JOIN i on b.tik = i.tik
+LEFT OUTER JOIN i on b.tik = i.tik;

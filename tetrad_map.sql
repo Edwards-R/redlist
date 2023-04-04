@@ -69,4 +69,4 @@ SELECT pk, tik, run, poly FROM poly_two
 
 UNION
 
-SELECT pk, tik, run, poly FROM poly_three
+SELECT pk, tik, run, poly FROM poly_three;

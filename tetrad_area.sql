@@ -40,4 +40,4 @@ FROM nomenclature b
 LEFT OUTER JOIN a on b.tik = a.tik
 LEFT OUTER JOIN x on b.tik = x.tik
 LEFT OUTER JOIN y on b.tik = y.tik
-LEFT OUTER JOIN z on b.tik = z.tik
+LEFT OUTER JOIN z on b.tik = z.tik;
