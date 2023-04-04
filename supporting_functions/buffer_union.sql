@@ -24,8 +24,7 @@ CREATE OR REPLACE FUNCTION redlist.buffer_union(
 )
 RETURNS TABLE (
     tik INT,
-    poly public.geometry,
-    sq_km INT
+    poly public.geometry
 )
 LANGUAGE plpgsql
 AS $$
@@ -68,7 +67,7 @@ BEGIN
             GROUP BY tik
         )
         
-        SELECT tik, poly, (public.ST_AREA(poly)/1000000)::INT sq_km
+        SELECT tik, poly
         FROM b_u',
         source_name, start_year, end_year
     )

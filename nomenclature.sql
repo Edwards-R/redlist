@@ -9,4 +9,4 @@ WITH tiks AS
 
 SELECT t.tik, binomial
 FROM tiks t
-JOIN nomenclature.binomial b on t.tik = b.tik
+JOIN nomenclature.binomial b on t.tik = b.tik;

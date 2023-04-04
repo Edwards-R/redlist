@@ -1,57 +1,134 @@
-SET SCHEMA 'redlist';
+DROP SEQUENCE IF EXISTS bump;
 
-CREATE TABLE redlist.buffer_union AS (
+CREATE TEMPORARY SEQUENCE bump START 1;
 
-	WITH a AS (
-		SELECT * FROM buffer_union('sura_10km',40)
+CREATE MATERIALIZED VIEW redlist.buffer_union_map AS (
+	WITH clipping_mask AS(
+		SELECT public.ST_UNION(geom) mask FROM public.outline WHERE id < 164
 	),
-
-	x AS (
-		SELECT * FROM buffer_union('sura_10km',40, 1992, 2001)
+	
+	all_values AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'all' run
+		FROM buffer_union('sura_10km', 40), clipping_mask
 	),
-
-	y AS (
-		SELECT * FROM buffer_union('sura_10km',40, 2002, 2011)
+	
+	slice_one AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 1' run
+		FROM buffer_union('sura_10km', 40, 1992, 2001), clipping_mask
 	),
-
-	z AS (
-		SELECT * FROM buffer_union('sura_10km',40, 2012, 2021)
+	
+	slice_two AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 2' run
+		FROM buffer_union('sura_10km', 40, 2002, 2011), clipping_mask
 	),
-
-	m AS (
-		SELECT * FROM buffer_union('sura_10km',40, 2012, 2015)
+	
+	slice_three AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 3' run
+		FROM buffer_union('sura_10km', 40, 2012, 2021), clipping_mask
 	),
-
-	n AS (
-		SELECT * FROM buffer_union('sura_10km',40, 2016, 2021)
+	
+	slice_three_a AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 3a' run
+		FROM buffer_union('sura_10km', 40, 2012, 2016), clipping_mask
+	),
+	
+	slice_three_b AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 3b' run
+		FROM buffer_union('sura_10km', 40, 2017, 2021), clipping_mask
 	)
-
-	SELECT b.tik tik, a.poly map_all, a.sq_km sq_km_all,
-	x.poly map_1, x.sq_km sq_km_1,
-	y.poly map_2, y.sq_km sq_km_2,
-	z.poly map_3, z.sq_km sq_km_3,
-	m.poly map_s1, m.sq_km sq_km_s1,
-	n.poly map_s2, n.sq_km sq_km_s2
-
-	FROM nomenclature b
-	LEFT OUTER JOIN a ON b.tik = a.tik
-	LEFT OUTER JOIN x ON b.tik = x.tik
-	LEFT OUTER JOIN y ON b.tik = y.tik
-	LEFT OUTER JOIN z ON b.tik = z.tik
-	LEFT OUTER JOIN m ON b.tik = m.tik
-	LEFT OUTER JOIN n ON b.tik = n.tik
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM all_values, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_one, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_two, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_three, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_three_a, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_three_b, clipping_mask
 );
 
 CREATE VIEW redlist.buffer_union_summary AS (
-	select buf.tik,
-	binomial,
-	COALESCE(sq_km_all, 0) AS all,
-	COALESCE(sq_km_1, 0) slice_1,
-	COALESCE(((sq_km_1/sq_km_all::FLOAT)*100)::INT,0) AS "slice_1%all",
-	COALESCE(sq_km_2, 0) slice_2,
-	COALESCE(((sq_km_2/sq_km_all::FLOAT)*100)::INT, 0) AS "slice_2%all",
-	COALESCE(sq_km_3, 0) slice_3,
-	COALESCE(((sq_km_3/sq_km_all::FLOAT)*100)::INT, 0) AS "slice_3%all"
-	from redlist.buffer_union buf
-	JOIN nomenclature b on buf.tik = b.tik
+    WITH slice_all AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'all'
+    ),
+
+    slice_one AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 1'
+    ),
+
+    slice_two AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 2'
+    ),
+
+    slice_three AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3'
+    ),
+
+    slice_three_a AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3a'
+    ),
+
+    slice_three_b AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3b'
+    )
+
+    SELECT n.tik, n.binomial,
+    COALESCE(slice_all.sq_km, 0) slice_all,
+
+    COALESCE(slice_one.sq_km, 0) slice_1,
+    COALESCE(((slice_one.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_1%all",
+
+    COALESCE(slice_two.sq_km, 0) slice_2,
+    COALESCE(((slice_two.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_2%all",
+
+    COALESCE(slice_three.sq_km, 0) slice_3,
+    COALESCE(((slice_three.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3%all",
+
+    COALESCE(slice_three_a.sq_km, 0) slice_3a,
+    COALESCE(((slice_three_a.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3a%all",
+
+    COALESCE(slice_three_b.sq_km, 0) slice_3b,
+    COALESCE(((slice_three_b.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3b%all"
+
+    FROM nomenclature n
+
+    LEFT OUTER JOIN slice_all on n.tik = slice_all.tik
+    LEFT OUTER JOIN slice_one on n.tik = slice_one.tik
+    LEFT OUTER JOIN slice_two on n.tik = slice_two.tik
+    LEFT OUTER JOIN slice_three on n.tik = slice_three.tik
+    LEFT OUTER JOIN slice_three_a on n.tik = slice_three_a.tik
+    LEFT OUTER JOIN slice_three_b on n.tik = slice_three_b.tik
+
+
 );

@@ -62,3 +62,7 @@ CREATE VIEW sura_2km AS (
     FROM sur_2km
     GROUP BY tik, easting, northing, accuracy, datum, vc_num, lower_year, upper_year
 );
+
+CREATE TABLE country_outline AS (
+    SELECT * FROM public.outline
+);

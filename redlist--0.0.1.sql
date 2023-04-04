@@ -55,8 +55,7 @@ CREATE OR REPLACE FUNCTION redlist.buffer_union(
 )
 RETURNS TABLE (
     tik INT,
-    poly public.geometry,
-    sq_km INT
+    poly public.geometry
 )
 LANGUAGE plpgsql
 AS $$
@@ -99,7 +98,7 @@ BEGIN
             GROUP BY tik
         )
         
-        SELECT tik, poly, (public.ST_AREA(poly)/1000000)::INT sq_km
+        SELECT tik, poly
         FROM b_u',
         source_name, start_year, end_year
     )
@@ -293,65 +292,336 @@ CREATE VIEW sura_2km AS (
     lower_year, upper_year
     FROM sur_2km
     GROUP BY tik, easting, northing, accuracy, datum, vc_num, lower_year, upper_year
-);SET SCHEMA 'redlist';
+);
+
+CREATE TABLE country_outline AS (
+    SELECT * FROM public.outline
+);
+-- This exists to a) export the nomenclature and b) be used in LEFT OUTER JOIN rather than nomenclature.binomial, as that contains non-red list taxa
+
+CREATE VIEW redlist.nomenclature AS
+WITH tiks AS
+(
+	SELECT distinct(tik)
+	FROM redlist.simple_unique_record
+)
+
+SELECT t.tik, binomial
+FROM tiks t
+JOIN nomenclature.binomial b on t.tik = b.tik;
+SET SCHEMA 'redlist';
 
 -- Make the 10km  regional counts
 CALL regional_cells('regional_cells_10km', 'sur_10km');
 
 -- Make the 2km regional counts
-CALL regional_cells('regional_cells_2km', 'sur_2km');SET SCHEMA 'redlist';
+CALL regional_cells('regional_cells_2km', 'sur_2km');DROP SEQUENCE IF EXISTS bump;
 
-CREATE TABLE redlist.buffer_union AS (
+CREATE TEMPORARY SEQUENCE bump START 1;
 
-	WITH a AS (
-		SELECT * FROM buffer_union('sura_10km',40)
+CREATE MATERIALIZED VIEW redlist.buffer_union_map AS (
+	WITH clipping_mask AS(
+		SELECT public.ST_UNION(geom) mask FROM public.outline WHERE id < 164
 	),
-
-	x AS (
-		SELECT * FROM buffer_union('sura_10km',40, 1992, 2001)
+	
+	all_values AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'all' run
+		FROM buffer_union('sura_10km', 40), clipping_mask
 	),
-
-	y AS (
-		SELECT * FROM buffer_union('sura_10km',40, 2002, 2011)
+	
+	slice_one AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 1' run
+		FROM buffer_union('sura_10km', 40, 1992, 2001), clipping_mask
 	),
-
-	z AS (
-		SELECT * FROM buffer_union('sura_10km',40, 2012, 2021)
+	
+	slice_two AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 2' run
+		FROM buffer_union('sura_10km', 40, 2002, 2011), clipping_mask
 	),
-
-	m AS (
-		SELECT * FROM buffer_union('sura_10km',40, 2012, 2015)
+	
+	slice_three AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 3' run
+		FROM buffer_union('sura_10km', 40, 2012, 2021), clipping_mask
 	),
-
-	n AS (
-		SELECT * FROM buffer_union('sura_10km',40, 2016, 2021)
+	
+	slice_three_a AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 3a' run
+		FROM buffer_union('sura_10km', 40, 2012, 2016), clipping_mask
+	),
+	
+	slice_three_b AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 3b' run
+		FROM buffer_union('sura_10km', 40, 2017, 2021), clipping_mask
 	)
-
-	SELECT a.tik tik, a.poly map_all, a.sq_km sq_km_all,
-	x.poly map_1, x.sq_km sq_km_1,
-	y.poly map_2, y.sq_km sq_km_2,
-	z.poly map_3, z.sq_km sq_km_3,
-	m.poly map_s1, m.sq_km sq_km_s1,
-	n.poly map_s2, n.sq_km sq_km_s2
-
-	FROM a
-	JOIN x ON a.tik = x.tik
-	JOIN y ON a.tik = y.tik
-	JOIN z ON a.tik = z.tik
-	JOIN m ON a.tik = m.tik
-	JOIN n ON a.tik = n.tik
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM all_values, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_one, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_two, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_three, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_three_a, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_three_b, clipping_mask
 );
 
 CREATE VIEW redlist.buffer_union_summary AS (
-	select buf.tik,
-	binomial,
-	sq_km_all,
-	sq_km_1,
-	((sq_km_1/sq_km_all::FLOAT)*100)::INT AS "1%A",
-	sq_km_2,
-	((sq_km_2/sq_km_all::FLOAT)*100)::INT AS "2%A",
-	sq_km_3,
-	((sq_km_3/sq_km_all::FLOAT)*100)::INT AS "3%A"
-	from redlist.buffer_union buf
-	JOIN nomenclature.binomial b on buf.tik = b.tik
-);
+    WITH slice_all AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'all'
+    ),
+
+    slice_one AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 1'
+    ),
+
+    slice_two AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 2'
+    ),
+
+    slice_three AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3'
+    ),
+
+    slice_three_a AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3a'
+    ),
+
+    slice_three_b AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3b'
+    )
+
+    SELECT n.tik, n.binomial,
+    COALESCE(slice_all.sq_km, 0) slice_all,
+
+    COALESCE(slice_one.sq_km, 0) slice_1,
+    COALESCE(((slice_one.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_1%all",
+
+    COALESCE(slice_two.sq_km, 0) slice_2,
+    COALESCE(((slice_two.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_2%all",
+
+    COALESCE(slice_three.sq_km, 0) slice_3,
+    COALESCE(((slice_three.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3%all",
+
+    COALESCE(slice_three_a.sq_km, 0) slice_3a,
+    COALESCE(((slice_three_a.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3a%all",
+
+    COALESCE(slice_three_b.sq_km, 0) slice_3b,
+    COALESCE(((slice_three_b.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3b%all"
+
+    FROM nomenclature n
+
+    LEFT OUTER JOIN slice_all on n.tik = slice_all.tik
+    LEFT OUTER JOIN slice_one on n.tik = slice_one.tik
+    LEFT OUTER JOIN slice_two on n.tik = slice_two.tik
+    LEFT OUTER JOIN slice_three on n.tik = slice_three.tik
+    LEFT OUTER JOIN slice_three_a on n.tik = slice_three_a.tik
+    LEFT OUTER JOIN slice_three_b on n.tik = slice_three_b.tik
+
+
+);SET SCHEMA 'redlist';
+CREATE VIEW tetrad_area AS
+WITH a AS (
+    SELECT tik, COUNT(*)
+    FROM sur_2km
+    GROUP BY tik
+),
+
+x AS (
+    SELECT tik, COUNT(*)
+    FROM sur_2km
+    WHERE lower_year >1991
+    AND lower_year <=2001
+    GROUP BY tik
+),
+
+y AS (
+    SELECT tik, COUNT(*)
+    FROM sur_2km
+    WHERE lower_year >2001
+    AND lower_year <=2011
+    GROUP BY tik
+),
+
+z AS (
+    SELECT tik, COUNT(*)
+    FROM sur_2km
+    WHERE lower_year >2011
+    AND lower_year <=2021
+    GROUP BY tik
+)
+
+-- Multiply by 4 to get sq km (2km x 2km = 4 km sq)
+SELECT a.tik, b.binomial,
+    COALESCE(a.count*4, 0) all,
+    COALESCE(x.count*4, 0) slice_1,
+    COALESCE(y.count*4, 0) slice_2,
+    COALESCE(z.count*4, 0) slice_3
+FROM nomenclature b
+LEFT OUTER JOIN a on b.tik = a.tik
+LEFT OUTER JOIN x on b.tik = x.tik
+LEFT OUTER JOIN y on b.tik = y.tik
+LEFT OUTER JOIN z on b.tik = z.tik
+DROP SEQUENCE IF EXISTS tetseq;
+
+CREATE TEMPORARY SEQUENCE tetseq START 1;
+
+CREATE MATERIALIZED VIEW tetrad_map AS
+WITH sub_all AS(
+    SELECT tik, easting, northing, accuracy, datum
+    FROM sura_2km
+    GROUP BY tik, easting, northing, accuracy, datum
+),
+
+poly_all AS (
+    SELECT nextval('tetseq') pk, tik, 'all' run, public.ST_UNION(public.ST_MAKEENVELOPE(easting, northing, easting+accuracy, northing+accuracy, datum)) poly
+    FROM sub_all
+    GROUP BY tik
+),
+
+sub_one AS(
+    SELECT tik, easting, northing, accuracy, datum
+    FROM sura_2km
+    WHERE lower_year >1991
+    AND lower_year <=2001
+    GROUP BY tik, easting, northing, accuracy, datum
+),
+
+poly_one AS (
+    SELECT nextval('tetseq') pk, tik, 'slice 1' run, public.ST_UNION(public.ST_MAKEENVELOPE(easting, northing, easting+accuracy, northing+accuracy, datum)) poly
+    FROM sub_one
+    GROUP BY tik
+),
+
+sub_two AS(
+    SELECT tik, easting, northing, accuracy, datum
+    FROM sura_2km
+    WHERE lower_year >2001
+    AND lower_year <=2011
+    GROUP BY tik, easting, northing, accuracy, datum
+),
+
+poly_two AS (
+    SELECT nextval('tetseq') pk, tik, 'slice 2' run, public.ST_UNION(public.ST_MAKEENVELOPE(easting, northing, easting+accuracy, northing+accuracy, datum)) poly
+    FROM sub_two
+    GROUP BY tik
+),
+
+sub_three AS(
+    SELECT tik, easting, northing, accuracy, datum
+    FROM sura_2km
+    WHERE lower_year >2011
+    AND lower_year <=2021
+    GROUP BY tik, easting, northing, accuracy, datum
+),
+
+poly_three AS (
+    SELECT nextval('tetseq') pk, tik, 'slice 3' run, public.ST_UNION(public.ST_MAKEENVELOPE(easting, northing, easting+accuracy, northing+accuracy, datum)) poly
+    FROM sub_three
+    GROUP BY tik
+)
+
+SELECT pk, tik, run, poly FROM poly_all
+
+UNION
+
+SELECT pk, tik, run, poly FROM poly_one
+
+UNION
+
+SELECT pk, tik, run, poly FROM poly_two
+
+UNION
+
+SELECT pk, tik, run, poly FROM poly_threeSET SCHEMA 'redlist';
+CREATE VIEW record_counts AS
+WITH a AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
+    GROUP BY tik
+),
+
+x AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
+    WHERE lower_year >1991
+    AND lower_year <=2001
+    GROUP BY tik
+),
+
+y AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
+    WHERE lower_year >2001
+    AND lower_year <=2011
+    GROUP BY tik
+),
+
+z AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
+    WHERE lower_year >2011
+    AND lower_year <=2021
+    GROUP BY tik
+),
+
+h AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
+    WHERE lower_year >2011
+    AND lower_year <=2016
+    GROUP BY tik
+),
+
+i AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
+    WHERE lower_year >2016
+    AND lower_year <=2021
+    GROUP BY tik
+)
+
+-- Put it all together, coalesce to remove nulls
+SELECT a.tik, b.binomial,
+    COALESCE(a.count, 0) all,
+    COALESCE(x.count, 0) slice_1,
+    COALESCE(y.count, 0) slice_2,
+    COALESCE(z.count, 0) slice_3,
+    COALESCE(h.count, 0) slice_3a,
+    COALESCE(i.count, 0) slice_3b
+FROM nomenclature b
+LEFT OUTER JOIN a on b.tik = a.tik
+LEFT OUTER JOIN x on b.tik = x.tik
+LEFT OUTER JOIN y on b.tik = y.tik
+LEFT OUTER JOIN z on b.tik = z.tik
+LEFT OUTER JOIN h on b.tik = h.tik
+LEFT OUTER JOIN i on b.tik = i.tik
