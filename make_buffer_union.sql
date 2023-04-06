@@ -39,6 +39,22 @@ CREATE MATERIALIZED VIEW redlist.buffer_union_map AS (
 		FROM buffer_union('sura_10km', 40, 2012, 2021), clipping_mask
 	),
 	
+	slice_two_a AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 2a' run
+		FROM buffer_union('sura_10km', 40, 2002, 2006), clipping_mask
+	),
+	
+	slice_two_b AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 2b' run
+		FROM buffer_union('sura_10km', 40, 2007, 2011), clipping_mask
+	),
+	
 	slice_three_a AS (
 		SELECT nextval('bump') pk,
 		tik,
@@ -71,6 +87,14 @@ CREATE MATERIALIZED VIEW redlist.buffer_union_map AS (
 	
 	UNION
 	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_two_a, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_two_b, clipping_mask
+
+	UNION
+	
 	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_three_a, clipping_mask
 	
 	UNION
@@ -95,6 +119,14 @@ CREATE VIEW redlist.buffer_union_summary AS (
         SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3'
     ),
 
+    slice_two_a AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 2a'
+    ),
+
+    slice_two_b AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 2b'
+    ),
+
     slice_three_a AS (
         SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3a'
     ),
@@ -114,6 +146,12 @@ CREATE VIEW redlist.buffer_union_summary AS (
 
     COALESCE(slice_three.sq_km, 0) slice_3,
     COALESCE(((slice_three.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3%all",
+
+    COALESCE(slice_two_a.sq_km, 0) slice_2a,
+    COALESCE(((slice_two_a.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_2a%all",
+
+    COALESCE(slice_two_b.sq_km, 0) slice_2b,
+    COALESCE(((slice_two_b.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_2b%all",
 
     COALESCE(slice_three_a.sq_km, 0) slice_3a,
     COALESCE(((slice_three_a.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3a%all",

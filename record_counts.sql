@@ -33,12 +33,28 @@ z AS (
 h AS (
     SELECT tik, COUNT(*)
     FROM simple_unique_record
+    WHERE lower_year >2001
+    AND lower_year <=2006
+    GROUP BY tik
+),
+
+i AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
+    WHERE lower_year >2006
+    AND lower_year <=2011
+    GROUP BY tik
+),
+
+j AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
     WHERE lower_year >2011
     AND lower_year <=2016
     GROUP BY tik
 ),
 
-i AS (
+k AS (
     SELECT tik, COUNT(*)
     FROM simple_unique_record
     WHERE lower_year >2016
@@ -52,12 +68,16 @@ SELECT a.tik, b.binomial,
     COALESCE(x.count, 0) slice_1,
     COALESCE(y.count, 0) slice_2,
     COALESCE(z.count, 0) slice_3,
-    COALESCE(h.count, 0) slice_3a,
-    COALESCE(i.count, 0) slice_3b
+    COALESCE(h.count, 0) slice_2a,
+    COALESCE(i.count, 0) slice_2b,
+    COALESCE(j.count, 0) slice_3a,
+    COALESCE(k.count, 0) slice_3b
 FROM nomenclature b
 LEFT OUTER JOIN a on b.tik = a.tik
 LEFT OUTER JOIN x on b.tik = x.tik
 LEFT OUTER JOIN y on b.tik = y.tik
 LEFT OUTER JOIN z on b.tik = z.tik
 LEFT OUTER JOIN h on b.tik = h.tik
-LEFT OUTER JOIN i on b.tik = i.tik;
+LEFT OUTER JOIN i on b.tik = i.tik
+LEFT OUTER JOIN j on b.tik = j.tik
+LEFT OUTER JOIN k on b.tik = k.tik;
