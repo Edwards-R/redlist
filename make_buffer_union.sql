@@ -165,7 +165,9 @@ CREATE VIEW redlist.buffer_union_summary AS (
     LEFT OUTER JOIN slice_one on n.tik = slice_one.tik
     LEFT OUTER JOIN slice_two on n.tik = slice_two.tik
     LEFT OUTER JOIN slice_three on n.tik = slice_three.tik
-    LEFT OUTER JOIN slice_three_a on n.tik = slice_three_a.tik
+    LEFT OUTER JOIN slice_two_a on n.tik = slice_two_a.tik
+    LEFT OUTER JOIN slice_two_b on n.tik = slice_two_b.tik
+	LEFT OUTER JOIN slice_three_a on n.tik = slice_three_a.tik
     LEFT OUTER JOIN slice_three_b on n.tik = slice_three_b.tik
 
 

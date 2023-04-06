@@ -356,6 +356,22 @@ CREATE MATERIALIZED VIEW redlist.buffer_union_map AS (
 		FROM buffer_union('sura_10km', 40, 2012, 2021), clipping_mask
 	),
 	
+	slice_two_a AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 2a' run
+		FROM buffer_union('sura_10km', 40, 2002, 2006), clipping_mask
+	),
+	
+	slice_two_b AS (
+		SELECT nextval('bump') pk,
+		tik,
+		public.ST_INTERSECTION(poly, mask) poly,
+		'slice 2b' run
+		FROM buffer_union('sura_10km', 40, 2007, 2011), clipping_mask
+	),
+	
 	slice_three_a AS (
 		SELECT nextval('bump') pk,
 		tik,
@@ -388,6 +404,14 @@ CREATE MATERIALIZED VIEW redlist.buffer_union_map AS (
 	
 	UNION
 	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_two_a, clipping_mask
+	
+	UNION
+	
+	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_two_b, clipping_mask
+
+	UNION
+	
 	SELECT pk, tik, run, (public.ST_AREA(poly)/1000000)::INT sq_km, poly FROM slice_three_a, clipping_mask
 	
 	UNION
@@ -412,6 +436,14 @@ CREATE VIEW redlist.buffer_union_summary AS (
         SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3'
     ),
 
+    slice_two_a AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 2a'
+    ),
+
+    slice_two_b AS (
+        SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 2b'
+    ),
+
     slice_three_a AS (
         SELECT tik, sq_km FROM buffer_union_map WHERE run = 'slice 3a'
     ),
@@ -432,6 +464,12 @@ CREATE VIEW redlist.buffer_union_summary AS (
     COALESCE(slice_three.sq_km, 0) slice_3,
     COALESCE(((slice_three.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3%all",
 
+    COALESCE(slice_two_a.sq_km, 0) slice_2a,
+    COALESCE(((slice_two_a.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_2a%all",
+
+    COALESCE(slice_two_b.sq_km, 0) slice_2b,
+    COALESCE(((slice_two_b.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_2b%all",
+
     COALESCE(slice_three_a.sq_km, 0) slice_3a,
     COALESCE(((slice_three_a.sq_km/slice_all.sq_km::FLOAT)*100)::INT,0) AS "slice_3a%all",
 
@@ -444,7 +482,9 @@ CREATE VIEW redlist.buffer_union_summary AS (
     LEFT OUTER JOIN slice_one on n.tik = slice_one.tik
     LEFT OUTER JOIN slice_two on n.tik = slice_two.tik
     LEFT OUTER JOIN slice_three on n.tik = slice_three.tik
-    LEFT OUTER JOIN slice_three_a on n.tik = slice_three_a.tik
+    LEFT OUTER JOIN slice_two_a on n.tik = slice_two_a.tik
+    LEFT OUTER JOIN slice_two_b on n.tik = slice_two_b.tik
+	LEFT OUTER JOIN slice_three_a on n.tik = slice_three_a.tik
     LEFT OUTER JOIN slice_three_b on n.tik = slice_three_b.tik
 
 
@@ -598,12 +638,28 @@ z AS (
 h AS (
     SELECT tik, COUNT(*)
     FROM simple_unique_record
+    WHERE lower_year >2001
+    AND lower_year <=2006
+    GROUP BY tik
+),
+
+i AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
+    WHERE lower_year >2006
+    AND lower_year <=2011
+    GROUP BY tik
+),
+
+j AS (
+    SELECT tik, COUNT(*)
+    FROM simple_unique_record
     WHERE lower_year >2011
     AND lower_year <=2016
     GROUP BY tik
 ),
 
-i AS (
+k AS (
     SELECT tik, COUNT(*)
     FROM simple_unique_record
     WHERE lower_year >2016
@@ -617,12 +673,16 @@ SELECT a.tik, b.binomial,
     COALESCE(x.count, 0) slice_1,
     COALESCE(y.count, 0) slice_2,
     COALESCE(z.count, 0) slice_3,
-    COALESCE(h.count, 0) slice_3a,
-    COALESCE(i.count, 0) slice_3b
+    COALESCE(h.count, 0) slice_2a,
+    COALESCE(i.count, 0) slice_2b,
+    COALESCE(j.count, 0) slice_3a,
+    COALESCE(k.count, 0) slice_3b
 FROM nomenclature b
 LEFT OUTER JOIN a on b.tik = a.tik
 LEFT OUTER JOIN x on b.tik = x.tik
 LEFT OUTER JOIN y on b.tik = y.tik
 LEFT OUTER JOIN z on b.tik = z.tik
 LEFT OUTER JOIN h on b.tik = h.tik
-LEFT OUTER JOIN i on b.tik = i.tik;
+LEFT OUTER JOIN i on b.tik = i.tik
+LEFT OUTER JOIN j on b.tik = j.tik
+LEFT OUTER JOIN k on b.tik = k.tik;
