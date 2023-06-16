@@ -11,5 +11,6 @@ cell_counts.sql \
 make_buffer_union.sql \
 tetrad_area.sql \
 tetrad_map.sql \
-record_counts.sql
+record_counts.sql \
+make_mcp.sql
 	cat $^ > $@
