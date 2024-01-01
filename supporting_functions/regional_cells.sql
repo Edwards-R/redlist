@@ -29,7 +29,7 @@ BEGIN
         CREATE VIEW %I AS (
 
             WITH raw AS (
-                SELECT * FROM %I
+                SELECT * FROM redlist.%I
             ),
 
             scotland AS (
@@ -63,7 +63,7 @@ BEGIN
                 GROUP BY tik
             ),
 
-            raw_date AS (
+            raw_data AS (
                 SELECT a.tik tik, a.cnt all, e.cnt england, s.cnt scotland, w.cnt wales
                 FROM all_area a
                 LEFT OUTER JOIN scotland s on a.tik = s.tik
@@ -76,7 +76,7 @@ BEGIN
             CASE WHEN r.england IS NULL THEN 0 ELSE r.england END england,
             CASE WHEN r.scotland IS NULL THEN 0 ELSE r.scotland END scotland,
             CASE WHEN r.wales IS NULL THEN 0 ELSE r.wales END wales
-            FROM raw_date r
+            FROM raw_data r
         )',
         view_name, source_name
     );
