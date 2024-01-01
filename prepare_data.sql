@@ -78,29 +78,29 @@ SELECT tik, vc_num
 ),
 
 england AS (
-	SELECT tik, 'England', count(*)
+	SELECT tik, 'England', count(*) cnt
 	FROM raw s 
 	JOIN vc_country v ON s.vc_num = v.vc_num
 	WHERE v.country= 'England'
 	GROUP BY tik
 ),
 wales AS (
-	SELECT tik, 'Wales', count(*)
+	SELECT tik, 'Wales', count(*) cnt
 	FROM raw s
 	JOIN vc_country v ON s.vc_num = v.vc_num
 	WHERE v.country= 'Wales'
 	GROUP BY tik
 ),
 scotland AS (
-	SELECT tik, 'Scotland', count(*)
+	SELECT tik, 'Scotland', count(*) cnt
 	FROM raw s
 	JOIN vc_country v ON s.vc_num = v.vc_num
 	WHERE v.country= 'Scotland'
 	GROUP BY tik
 )
 
-SELECT e.tik, COALESCE(e.count,0) england, COALESCE(w.count,0) wales, COALESCE(s.count,0) scotland,
-COALESCE(e.count+w.count+s.count,0) combined
+SELECT e.tik, COALESCE(e.cnt,0) england, COALESCE(w.cnt,0) wales, COALESCE(s.cnt,0) scotland,
+COALESCE(e.cnt,0) + COALESCE(w.cnt,0) + COALESCE(s.cnt,0) combined
 FROM england e
 LEFT OUTER JOIN wales w on e.tik = w.tik
 LEFT OUTER JOIN scotland s on e.tik = s.tik;
