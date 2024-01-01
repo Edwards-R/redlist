@@ -101,8 +101,8 @@ scotland AS (
 
 SELECT e.tik, COALESCE(e.cnt,0) england, COALESCE(w.cnt,0) wales, COALESCE(s.cnt,0) scotland,
 COALESCE(e.cnt,0) + COALESCE(w.cnt,0) + COALESCE(s.cnt,0) combined
-FROM england e
-LEFT OUTER JOIN wales w on e.tik = w.tik
-LEFT OUTER JOIN scotland s on e.tik = s.tik;
-
+FROM nomenclature n
+LEFT OUTER JOIN england e on n.tik = e.tik
+LEFT OUTER JOIN wales w on n.tik = w.tik
+LEFT OUTER JOIN scotland s on n.tik = s.tik;
 
