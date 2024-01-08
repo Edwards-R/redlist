@@ -1,5 +1,7 @@
 # **Redlist data preparation**
 
+***IMPORTANT*** - This is a project which got broken in the middle and a year sitting in the dust, before being picked up to be completed 'in a week's time' after 13 months. Documentation and processing has suffered and there's no time to go back over things and bring them up to my current standards. Double check all answers!
+
 This section outlines the process by which data is filtered before arriving as part of the Redlist, as well as the processes used to generate data for direct mapping, cell occupancy, and buffer_union models
 
 ## **Import process**
