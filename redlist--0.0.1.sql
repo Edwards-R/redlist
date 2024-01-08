@@ -254,8 +254,8 @@ CREATE VIEW sur_10km AS (
 -- Create the 2km resolution version
 CREATE VIEW sur_2km AS (
     SELECT tik,
-    (floor((easting/2000)*2000))::INT easting,
-    (floor((northing/2000)*2000))::INT northing,
+    (floor(easting/2000)*2000)::INT easting,
+    (floor(northing/2000)*2000)::INT northing,
     2000 accuracy,
     datum,
     vc_num,
@@ -315,7 +315,9 @@ SET SCHEMA 'redlist';
 CALL regional_cells('regional_cells_10km', 'sur_10km');
 
 -- Make the 2km regional counts
-CALL regional_cells('regional_cells_2km', 'sur_2km');DROP SEQUENCE IF EXISTS bump;
+CALL regional_cells('regional_cells_2km', 'sur_2km');
+
+DROP SEQUENCE IF EXISTS bump;
 
 CREATE TEMPORARY SEQUENCE bump START 1;
 
